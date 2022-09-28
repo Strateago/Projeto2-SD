@@ -1,2 +1,2 @@
-# Projeto2-SD
-Repositório destinado ao segundo projeto da cadeira de Sistemas Digitais
+#Projeto de Sistemas Digitais (IF675)
+PROJETO II - Implementação de uma Calculadora e Sensor de Infravermelho (IR)
