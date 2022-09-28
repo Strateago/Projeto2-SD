@@ -1,0 +1,39 @@
+module Seletor (CLK, Dis_Fin_M, Dis_Fin_C, Dis_Fin_D, Dis_Fin_U, S_MilR, S_CentR, S_DecR, S_UniR, On_MilR, On_CentR, On_DecR, On_UniR, M_MilR, M_CentR, M_DecR, M_UniR, Sub_MilR, Sub_CentR, Sub_DecR, Sub_UniR, Of_MilR, Of_CentR, Of_DecR, Of_UniR, S0, S1, S2, S3, S4)
+	output [0:6] Dis_Fin_M, Dis_Fin_C, Dis_Fin_D, Dis_Fin_U;
+	input [0:6] S_MilR, S_CentR, S_DecR, S_UniR, On_MilR, On_CentR, On_DecR, On_UniR, M_MilR, M_CentR, M_DecR, M_UniR, Sub_MilR, Sub_CentR, Sub_DecR, Sub_UniR, Of_MilR, Of_CentR, Of_DecR, Of_UniR;
+	input S0, S1, S2, S3, CLK;
+	
+	always @(posedge CLK) begin
+		if(S0 == 1) begin
+			Dis_Fin_M = Of_MilR;
+			Dis_Fin_C = Of_CentR;
+			Dis_Fin_D = Of_DecR;
+			Dis_Fin_U = Of_UniR;
+		end
+		else if(S1 == 1) begin
+			Dis_Fin_M = S_MilR;
+			Dis_Fin_C = S_CentR;
+			Dis_Fin_D = S_DecR;
+			Dis_Fin_U = S_UniR;
+		end
+		else if(S2 == 1) begin
+			Dis_Fin_M = Sub_MilR;
+			Dis_Fin_C = Sub_CentR;
+			Dis_Fin_D = Sub_DecR;
+			Dis_Fin_U = Sub_UniR;
+		end
+		else if(S3 == 1) begin
+			Dis_Fin_M = M_MilR;
+			Dis_Fin_C = M_CentR;
+			Dis_Fin_D = M_DecR;
+			Dis_Fin_U = M_UniR;
+		end
+		else begin
+			Dis_Fin_M = On_MilR;
+			Dis_Fin_C = On_CentR;
+			Dis_Fin_D = On_DecR;
+			Dis_Fin_U = On_UniR;
+		end
+		
+	end
+	

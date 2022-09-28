@@ -1,0 +1,40 @@
+module Calculadora (CLK, Dec1, Uni1, Dec2, Uni2, CentResult, DecResult, UniResult, N1, N2, B1, B2, B3, B4);
+
+	input [6:0] N1, N2;
+	input B1, B2, B3, B4, CLK;
+	output [0:6] Dec1, Uni1, Dec2, Uni2, CentResult, DecResult, UniResult;
+	parameter Off = 0, On = 1, Soma = 2, Sub = 3, Mult = 4;
+	reg [2:0] Estado = Off;
+	reg [3:0] OperCent, OperDec, OperUni, N1Dec, N1Uni, N2Dec, N2Uni;
+	
+	always @ (posedge CLK) begin
+		case(Estado)
+			1:
+				OperCent = 0;
+				OperDec = 0;
+				OperUni = 0;
+				
+				if(N1 <= 99) begin
+					N1Dec = N1/10;
+					N1Uni = N1%10;
+				end
+				else if (N1 > 99) begin
+					N1Dec = 9;
+					N1Uni = 9;
+				end
+				else if(N2 <= 99) begin
+					N2Dec = N1/10;
+					N2Uni = N1%10;
+				end
+				else begin
+					N2Dec = 9;
+					N2Uni = 9;
+				end
+				
+				Display CentResult (OperCent, CentResult);
+				Display DecResult (OperDec, DecResult);
+				Display UniResult (OperUni, UniResult);
+				Display Dec1 (N1Dec, Dec1);
+				Display Uni1 (N1Uni, Uni1);
+				Display Dec2 (N2Dec, Dec2);
+				Display Uni2 (N2Uni, Uni2);
