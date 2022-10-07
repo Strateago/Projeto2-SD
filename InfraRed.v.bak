@@ -1,0 +1,124 @@
+module InfraRed (CLK, Sinal, Data, Data_ready);
+
+	parameter Inicio = 2'b00;
+	parameter Espera = 2'b01; 
+	parameter Leia = 2'b10; 
+	parameter Inicio_Maior_Dur =  262143;  
+	parameter Espera_Menor_Dur =  230000;  
+	parameter Espera_Maior_Dur =  210000;  
+	parameter Data_Maior_Dur =  41500;	 
+	parameter Bit_Dur  =  20000;
+	
+	input CLK, Sinal;
+	output reg [31:0] Data;
+	output reg Data_ready;
+	
+	reg [17:0] Inicio_count;
+	reg Inicio_count_flag;
+	reg [17:0] Estado_count;
+	reg Estado_count_flag;
+	reg [17:0] data_count;
+	reg data_count_flag;
+	reg [5:0] bitcount; 
+	reg [1:0] Estado;
+	reg [31:0] data;
+	reg [31:0] data_buffer;
+	reg data_ready;
+	
+	assign Data_ready = data_ready;
+
+	always @(posedge CLK) begin
+			if (Inicio_count_flag)
+				 Inicio_count <= Inicio_count + 1'b1;
+			else  
+				 Inicio_count <= 0;      		 	
+	end
+
+	always @(posedge CLK) begin
+			if ((Estado == Inicio) && !Sinal)
+				 Inicio_count_flag <= 1'b1;
+			else                           
+				 Inicio_count_flag <= 1'b0;		     		 	
+	end      
+
+	always @(posedge CLK) begin	
+			if (Estado_count_flag)
+				 Estado_count <= Estado_count + 1'b1;
+			else  
+				 Estado_count <= 0;	      		 	
+	end
+
+	always @(posedge CLK) begin	
+			 if ((Estado == Espera) && Sinal)
+				 Estado_count_flag <= 1'b1;
+			else  
+				 Estado_count_flag <= 1'b0;     		 	
+	end
+
+	always @(posedge CLK) begin	
+			 if(data_count_flag)
+				 data_count <= data_count + 1'b1;
+			else 
+				 data_count <= 1'b0;
+	end
+
+	always @(posedge CLK) begin
+			 if ((Estado == Leia) && Sinal)
+				 data_count_flag <= 1'b1;  
+			else
+				 data_count_flag <= 1'b0; 
+	end
+
+	always @(posedge CLK) begin
+			 if (Estado == Leia)
+			begin
+				if (data_count == 20000)
+						bitcount <= bitcount + 1'b1;
+			end   
+			else
+				bitcount <= 6'b0;
+	end
+
+	always @(posedge CLK) begin
+			case (Estado)
+				Inicio     : if (Inicio_count > Espera_Menor_Dur)
+								Estado <= Espera; 
+				Espera : if (Estado_count > Espera_Maior_Dur)
+								Estado <= Leia;
+				Leia : if ((data_count >= Inicio_Maior_Dur) || (bitcount >= 33))
+										Estado <= Inicio;
+			default  : Estado <= Inicio;
+				endcase
+	end
+		
+	always @(posedge CLK) begin
+			 if (Estado == Leia)
+			begin
+				 if (data_count >= Data_Maior_Dur)
+					 data[bitcount-1'b1] <= 1'b1;
+			end
+			else
+				 data <= 0;
+	end
+
+	always @(posedge CLK) begin
+			 if (bitcount == 32)   
+			begin
+				 if (data[31:24] == ~data[23:16])
+				 begin		
+						data_buffer <= data;
+					  data_ready <= 1'b1;
+				 end	
+				 else
+					  data_ready <= 1'b0 ;
+			end
+			else
+				data_ready <= 1'b0 ;
+	end
+
+	always @(posedge CLK) begin
+			if (data_ready)
+				Data <= data_buffer;
+			else Data <= 32'b0000;
+	end
+endmodule	

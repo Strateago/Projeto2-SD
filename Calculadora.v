@@ -1,15 +1,17 @@
-module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResult, CentResult, DecResult, UniResult);
+module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResult, CentResult, DecResult, UniResult, Signal);
 
-	input B1, B2, B3, B4, CLK;
+	input B1, B2, B3, B4, CLK, Signal;
 	input [6:0] N1, N2;
 	output [0:6] Dec1, Uni1, Dec2, Uni2, MilResult, CentResult, DecResult, UniResult;
 	parameter Off = 0, Soma = 1, Sub = 2, Mult = 3, On = 4;
 	reg [2:0] Estado = Off;
 	reg On_Off = 0, Som, Subt, Mul = 0;
 	reg b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+	wire [31:0] Data;
+	wire c0, c1;
 	
 	always @ (posedge CLK) begin
-		if(~B1) begin
+		if(~B1 || Data[31:16] == 16'h8e71) begin
 			b1 = 1;
 		end
 		if(B1 && b1) begin
@@ -22,7 +24,7 @@ module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResu
 			else
 				Som = 0;
 		end
-		if(~B2) begin
+		if(~B2 || Data[31:16] == 16'h36c9) begin
 			b2 = 1;
 		end
 		if(B2 && b2) begin
@@ -35,7 +37,7 @@ module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResu
 			else
 				Subt = 0;
 		end
-		if(~B3) begin
+		if(~B3 || Data[31:16] == 16'h16e9) begin
 			b3 = 1;
 		end
 		if(B3 && b3) begin
@@ -48,7 +50,7 @@ module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResu
 			else
 				Mul = 0;
 		end
-		if(~B4) begin
+		if(~B4 || Data[31:0] == 32'b00011011111001001111110100000010) begin
 			b4 = 1;
 		end
 		if(B4 && b4) begin
@@ -67,7 +69,7 @@ module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResu
 	always @(posedge CLK) begin
 		case(Estado)
 			Off: begin
-				if(On_Off == 1) begin
+				if(On_Off) begin
 					Estado <= On;
 				end
 			end
@@ -132,4 +134,9 @@ module Calculadora (CLK, B1, B2, B3, B4, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResu
 	
 	Seletor select (Estado, N1, N2, Dec1, Uni1, Dec2, Uni2, MilResult, CentResult, DecResult, UniResult);
 	
-endmodule	
+	pll1 frequencia (CLK, c0, c1);
+	
+	InfraRed IR (c0, Signal, Data);
+
+	
+endmodule

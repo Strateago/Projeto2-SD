@@ -1,79 +1,42 @@
-// ============================================================================
-// Copyright (c) 2012 by Terasic Technologies Inc.
-// ============================================================================
-//
-// Permission:
-//
-//   Terasic grants permission to use and modify this code for use
-//   in synthesis for all Terasic Development Boards and Altera Development 
-//   Kits made by Terasic.  Other use of this code, including the selling 
-//   ,duplication, or modification of any portion is strictly prohibited.
-//
-// Disclaimer:
-//
-//   This VHDL/Verilog or C/C++ source code is intended as a design reference
-//   which illustrates how these types of functions can be implemented.
-//   It is the user's responsibility to verify their design for
-//   consistency and functionality through the use of formal
-//   verification methods.  Terasic provides no warranty regarding the use 
-//   or functionality of this code.
-//
-// ============================================================================
-//           
-//                     Terasic Technologies(China)Inc
-//                     
-//                     Wuhan, China
-//                     
-//
-//                     web: http://www.terasic.com.cn/
-//                     email: support@terasic.com
-//
-// ============================================================================
-//
-// Major Functions:	IRDA receiver
-//
-//                  it can realize a IRDA receiver,show the user code(16 bit) on HEX4-HEX7
-//                  and key value on HEX0-HEX3  7-SEGS.the user code is fixed for some 
-//                  remote control and the key value is not the same for different key
-// ============================================================================
-//
-// Revision History :
-// ============================================================================
-//   Ver  :| Author            :| Mod. Date   :| Changes Made:
-//   V1.0 :| Peli  Li          :| 2010/03/22  :| Initial Revision
-//   V1.1 :| Allen Wang        :| 06/06/2010  :| Change IRDA with IR
-//   v1.2 :| johnny            :| 06/18/2010  :| delete the iREAD port
-// ============================================================================
-module InfraRed(CLK, Sinal, Data);
+module InfraRed(
+					clk,         //clk 50MHz				
+					Signal,        //IR code input
+					Data,  //data ready
+					//Data_Ready        //decode data output
+					);
+
 
 //=======================================================
 //  PARAMETER declarations
 //=======================================================
-parameter IDLE               = 2'b00;    //always high voltage level
-parameter GUIDANCE           = 2'b01;    //9ms low voltage and 4.5 ms high voltage
-parameter DATAREAD           = 2'b10;    //0.6ms low voltage start and with 0.52ms high voltage is 0,with 1.66ms high voltage is 1, 32bit in sum.
+parameter Inicio               = 2'b00;    //always Maior voltage level
+parameter Espera           = 2'b01;    //9ms Menor voltage and 4.5 ms Maior voltage
+parameter Leia           = 2'b10;    //0.6ms Menor voltage start and with 0.52ms Maior voltage is 0,with 1.66ms Maior voltage is 1, 32bit in sum.
 
-parameter IDLE_HIGH_DUR      =  262143;  // data_count    262143*0.02us = 5.24ms, threshold for DATAREAD-----> IDLE
-parameter GUIDE_LOW_DUR      =  230000;  // idle_count    230000*0.02us = 4.60ms, threshold for IDLE--------->GUIDANCE
-parameter GUIDE_HIGH_DUR     =  210000;  // state_count   210000*0.02us = 4.20ms, 4.5-4.2 = 0.3ms < BIT_AVAILABLE_DUR = 0.4ms,threshold for GUIDANCE------->DATAREAD
-parameter DATA_HIGH_DUR      =  41500;	 // data_count    41500 *0.02us = 0.83ms, sample time from the posedge of iIRDA
-parameter BIT_AVAILABLE_DUR  =  20000;   // data_count    20000 *0.02us = 0.4ms,  the sample bit pointer,can inhibit the interference from iIRDA signal
+parameter Inicio_Maior_Dur      =  262143;  // data_count    262143*0.02us = 5.24ms, threshold for Leia-----> Inicio
+parameter Espera_Menor_Dur      =  230000;  // Inicio_count    230000*0.02us = 4.60ms, threshold for Inicio--------->Espera
+parameter Espera_Maior_Dur     =  210000;  // state_count   210000*0.02us = 4.20ms, 4.5-4.2 = 0.3ms < BIT_AVAILABLE_Dur = 0.4ms,threshold for Espera------->Leia
+parameter Data_Maior_Dur      =  41500;	 // data_count    41500 *0.02us = 0.83ms, sample time from the posedge of Signal
+//parameter BIT_AVAILABLE_Dur  =  20000;   // data_count    20000 *0.02us = 0.4ms,  the sample bit pointer,can inhibit the interference from Signal signal
 
 
 //=======================================================
 //  PORT declarations
 //=======================================================
-input         CLK;
-input         Sinal;
-output reg [31:0] Data;
+input         clk;        //input clk,50MHz
+input         Signal;       //Irda RX output decoded data
+//output        Data_Ready; //data ready
+output [31:0] Data;       //output data,32bit 
 
 
 //=======================================================
 //  Signal Declarations
 //=======================================================
-reg    [17:0] idle_count;            //idle_count counter works under data_read state
-reg           idle_count_flag;       //idle_count conter flag
-reg    [17:0] state_count;           //state_count counter works under guide state
+reg    [31:0] Data;                 //data output reg
+reg    [17:0] Inicio_count;            //Inicio_count counter works under data_read state
+reg           Inicio_count_flag;       //Inicio_count conter flag
+//wire          Inicio_count_max;
+reg    [17:0] state_count;           //state_count counter works under Espera state
 reg           state_count_flag;      //state_count conter flag
 reg    [17:0] data_count;            //data_count counter works under data_read state
 reg           data_count_flag;       //data_count conter flag
@@ -87,104 +50,86 @@ reg           data_ready;            //data ready flag
 //=======================================================
 //  Structural coding
 //=======================================================	
-//idle counter works on iclk under IDLE state only
-always @(posedge iCLK or negedge iRST_n)	
-	  if (!iRST_n)
-		   idle_count <= 0;
-	  else if (idle_count_flag)    //the counter works when the flag is 1
-			 idle_count <= idle_count + 1'b1;
-		else  
-			 idle_count <= 0;	        //the counter resets when the flag is 0		      		 	
+//assign Data_Ready = data_ready;
 
-//idle counter switch when iIRDA is low under IDLE state
-always @(posedge iCLK or negedge iRST_n)	
-	  if (!iRST_n)
-		   idle_count_flag <= 1'b0;
-	  else if ((state == IDLE) && !iIRDA)
-			 idle_count_flag <= 1'b1;
+
+//Inicio counter works on clk under Inicio state only
+always @(posedge clk) begin
+	   if (Inicio_count_flag)    //the counter works when the flag is 1
+			 Inicio_count <= Inicio_count + 1'b1;
+		else  
+			 Inicio_count <= 0;	        //the counter resets when the flag is 0		      		 	
+end
+//Inicio counter switch when Signal is Menor under Inicio state
+always @(posedge clk) begin
+	   if ((state == Inicio) && !Signal)
+			 Inicio_count_flag <= 1'b1;
 		else                           
-			 idle_count_flag <= 1'b0;		     		 	
-      
-//state counter works on iclk under GUIDE state only
-always @(posedge iCLK or negedge iRST_n)	
-	  if (!iRST_n)
-		   state_count <= 0;
-	  else if (state_count_flag)    //the counter works when the flag is 1
+			 Inicio_count_flag <= 1'b0;		     		 	
+end  
+//state counter works on clk under Espera state only
+always @(posedge clk) begin
+	  if (state_count_flag)    //the counter works when the flag is 1
 			 state_count <= state_count + 1'b1;
 		else  
 			 state_count <= 0;	        //the counter resets when the flag is 0		      		 	
-
-//state counter switch when iIRDA is high under GUIDE state
-always @(posedge iCLK or negedge iRST_n)	
-	  if (!iRST_n)
-		   state_count_flag <= 1'b0;
-	  else if ((state == GUIDANCE) && iIRDA)
+end
+//state counter switch when Signal is Maior under Espera state
+always @(posedge clk) begin
+	  if ((state == Espera) && Signal)
 			 state_count_flag <= 1'b1;
 		else  
 			 state_count_flag <= 1'b0;     		 	
-
-//data read decode counter based on iCLK
-always @(posedge iCLK or negedge iRST_n)	
-	  if (!iRST_n)
-		   data_count <= 1'b0;
-	  else if(data_count_flag)      //the counter works when the flag is 1
+end
+//data read decode counter based on clk
+always @(posedge clk) begin
+	  if(data_count_flag)      //the counter works when the flag is 1
 			 data_count <= data_count + 1'b1;
 		else 
 			 data_count <= 1'b0;        //the counter resets when the flag is 0
-
+end
 //data counter switch
-always @(posedge iCLK or negedge iRST_n)
-	  if (!iRST_n) 
-		   data_count_flag <= 0;	
-	  else if ((state == DATAREAD) && iIRDA)
+always @(posedge clk) begin	
+	  if ((state == Leia) && Signal)
 			 data_count_flag <= 1'b1;  
 		else
 			 data_count_flag <= 1'b0; 
-
+end
 //data reg pointer counter 
-always @(posedge iCLK or negedge iRST_n)
-    if (!iRST_n)
-       bitcount <= 6'b0;
-	  else if (state == DATAREAD)
+always @(posedge clk) begin
+	  if (state == Leia)
 		begin
 			if (data_count == 20000)
-					bitcount <= bitcount + 1'b1; //add 1 when iIRDA posedge
+					bitcount <= bitcount + 1'b1; //add 1 when Signal posedge
 		end   
 	  else
 	     bitcount <= 6'b0;
-
-//state change between IDLE,GUIDE,DATA_READ according to irda edge or counter
-always @(posedge iCLK or negedge iRST_n) 
-	  if (!iRST_n)	     
-	     state <= IDLE;
-	  else 
-			 case (state)
- 			    IDLE     : if (idle_count > GUIDE_LOW_DUR)  // state chang from IDLE to Guidance when detect the negedge and the low voltage last for > 4.6ms
-			  	              state <= GUIDANCE; 
-			    GUIDANCE : if (state_count > GUIDE_HIGH_DUR)//state change from GUIDANCE to DATAREAD when detect the posedge and the high voltage last for > 4.2ms
-			  	              state <= DATAREAD;
-			    DATAREAD : if ((data_count >= IDLE_HIGH_DUR) || (bitcount >= 33))
-			  					      state <= IDLE;
-	        default  : state <= IDLE; //default
-			 endcase
-
+end
+//state change between Inicio,Espera,DATA_READ according to irda edge or counter
+always @(posedge clk) begin 
+        case (state)
+            Inicio     : if (Inicio_count > Espera_Menor_Dur)  // state chang from Inicio to Espera when detect the negedge and the Menor voltage last for > 4.6ms
+                            state <= Espera; 
+            Espera : if (state_count > Espera_Maior_Dur)//state change from Espera to Leia when detect the posedge and the Maior voltage last for > 4.2ms
+                            state <= Leia;
+            Leia : if ((data_count >= Inicio_Maior_Dur) || (bitcount >= 33))
+                                    state <= Inicio;
+            default  : state <= Inicio; //default
+        endcase
+end
 //data decode base on the value of data_count 	
-always @(posedge iCLK or negedge iRST_n)
-	  if (!iRST_n)
-	     data <= 0;
-		else if (state == DATAREAD)
+always @(posedge clk) begin
+		if (state == Leia)
 		begin
-			 if (data_count >= DATA_HIGH_DUR) //2^15 = 32767*0.02us = 0.64us
+			 if (data_count >= Data_Maior_Dur) //2^15 = 32767*0.02us = 0.64us
 			    data[bitcount-1'b1] <= 1'b1;  //>0.52ms  sample the bit 1
 		end
 		else
 			 data <= 0;
-	
+end	
 //set the data_ready flag 
-always @(posedge iCLK or negedge iRST_n) 
-	  if (!iRST_n)
-	     data_ready <= 1'b0;
-    else if (bitcount == 32)   
+always @(posedge clk) begin
+    if (bitcount == 32)   
 		begin
 			 if (data[31:24] == ~data[23:16])
 			 begin		
@@ -196,12 +141,10 @@ always @(posedge iCLK or negedge iRST_n)
 		end
 		else
 		   data_ready <= 1'b0 ;
-
+end
 //read data
-always @(posedge iCLK or negedge iRST_n)
-	  if (!iRST_n)
-		   oDATA <= 32'b0000;
-	  else if (data_ready)
-	     oDATA <= data_buf;  //output
-					
+always @(posedge clk) begin
+	  if (data_ready)
+	     Data<= data_buf;  //output
+end				
 endmodule
